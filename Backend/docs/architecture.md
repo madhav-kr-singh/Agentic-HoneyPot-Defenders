@@ -1,19 +1,78 @@
 # 🏗️ System Architecture
 
 ## Table of Contents
-1. [High-Level Overview](#high-level-overview)
-2. [Component Architecture](#component-architecture)
-3. [Data Flow](#data-flow)
-4. [Agent Design](#agent-design)
-5. [Intelligence Extraction Engine](#intelligence-extraction-engine)
-6. [Memory Management](#memory-management)
-7. [Stop Conditions](#stop-conditions)
-8. [Callback System](#callback-system)
-9. [Scoring Alignment](#scoring-alignment)
-10. [API Specifications](#api-specifications)
-11. [Security Considerations](#security-considerations)
-12. [Deployment Architecture](#deployment-architecture)
-13. [Performance Benchmarks](#performance-benchmarks)
+1. [Project Setup](#project-setup)
+2. [High-Level Overview](#high-level-overview)
+3. [Component Architecture](#component-architecture)
+4. [Data Flow](#data-flow)
+5. [Agent Design](#agent-design)
+6. [Intelligence Extraction Engine](#intelligence-extraction-engine)
+7. [Memory Management](#memory-management)
+8. [Stop Conditions](#stop-conditions)
+9. [Callback System](#callback-system)
+10. [Scoring Alignment](#scoring-alignment)
+11. [API Specifications](#api-specifications)
+12. [Security Considerations](#security-considerations)
+13. [Deployment Architecture](#deployment-architecture)
+14. [Performance Benchmarks](#performance-benchmarks)
+
+---
+
+## Project Setup
+
+### Monorepo layout
+
+```
+Agentic-HoneyPot-Defenders/
+├── Backend/              # Honeypot API (this document's primary subject)
+│   ├── server.js
+│   ├── Agents/
+│   ├── example.env
+│   └── docs/architecture.md
+└── Tester-HoneyPot/      # Evaluation UI + scenario runner
+    ├── server.js
+    ├── tester.js
+    └── ui.html
+```
+
+See also the [root README](../../README.md) for a single quick-start path.
+
+### Local development workflow
+
+```
+┌─────────────────────┐     POST /honeypot      ┌─────────────────────┐
+│  Tester-HoneyPot    │ ──────────────────────▶ │  Backend API        │
+│  :4000 (UI + SSE)   │ ◀── { status, reply }   │  :3000              │
+│                     │                         │                     │
+│  POST /callback     │ ◀── final JSON payload  │  FINAL_CALLBACK_URL │
+└─────────────────────┘                         └─────────────────────┘
+```
+
+1. Start **Tester-HoneyPot** (`cd Tester-HoneyPot && npm install && npm start` → port 4000).
+2. Copy `FINAL_CALLBACK_URL` from tester startup logs.
+3. Create `Backend/.env` from `example.env`; set `API_KEY`, `OPENAI_API_KEY`, and `FINAL_CALLBACK_URL`.
+4. Start **Backend** (`cd Backend && npm install && npm start` → port 3000).
+5. In tester UI, point to `http://localhost:3000/honeypot` with matching `x-api-key`.
+
+### Environment variables (Backend)
+
+| Variable | Used by | Notes |
+|----------|---------|-------|
+| `PORT` | `server.js` | Default 3000 |
+| `API_KEY` | Auth middleware | Must match tester UI / `HONEYPOT_API_KEY` |
+| `OPENAI_API_KEY` | Lookup + Handler agents | Required for LLM calls |
+| `FINAL_CALLBACK_URL` | `callback.js` | Tester `/callback` endpoint; 3× retry |
+
+### Health and smoke checks
+
+- `GET http://localhost:3000/health` — API alive
+- `GET http://localhost:3000/` — Landing page
+- Run one tester scenario; confirm payload appears under **Payload** / **Scores** tabs
+
+### Related documentation
+
+- [Backend README](../README.md) — API overview and setup
+- [Tester README](../../Tester-HoneyPot/README.md) — Scenarios, scoring, UI usage
 
 ---
 
@@ -577,22 +636,27 @@ app.use("/honeypot", rateLimit({
 ## Deployment Architecture
 
 ### Development
+
 ```
 Local Machine
-  ├── Node.js 18+
-  ├── npm install
-  ├── .env configured
-  └── npm start → http://localhost:3000
+  ├── Terminal 1: Tester-HoneyPot (npm start → http://localhost:4000)
+  │     └── Note FINAL_CALLBACK_URL=http://localhost:4000/callback
+  ├── Terminal 2: Backend (cp example.env .env → npm start → http://localhost:3000)
+  │     └── FINAL_CALLBACK_URL must match tester /callback URL
+  └── Tester UI → Honeypot URL http://localhost:3000/honeypot + matching API_KEY
 ```
 
-### Production 
+### Production
+
 ```
-Hosting Web Service
-  ├── Auto-deploy from GitHub main branch
-  ├── Set environment variables
-  ├── Health check: GET / → 200 HTML landing page
-  └── Public URL: CHANGE URL HERE
+Backend (Web Service)                    Tester-HoneyPot (Web Service)
+  ├── PORT, API_KEY, OPENAI_API_KEY      ├── PORT (Render sets this)
+  ├── FINAL_CALLBACK_URL ───────────────▶│   https://your-tester.onrender.com/callback
+  ├── Health: GET /health                ├── RENDER_EXTERNAL_URL (auto on Render)
+  └── POST /honeypot                     └── GET / → ui.html, POST /callback
 ```
+
+Deploy Backend and Tester as separate services. Set Backend `FINAL_CALLBACK_URL` to the tester's public `/callback` URL. The tester injects the same URL into `tester.js` child processes when runs start from the UI.
 
 The service is stateless per process. For multi-instance deployments, replace the in-memory `Map` with a shared Redis instance (session keys are `sessionId` strings, values are the memory objects serialised as JSON).
 

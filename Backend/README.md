@@ -72,7 +72,7 @@ Output:
 - Adapts strategy by turn count
 - Explicitly identifies red flags
 
-Up to 15 turns per session.
+Up to 10 turns per session.
 
 ---
 
@@ -95,8 +95,8 @@ All data is deduplicated and stored in session memory.
 
 Session stops when:
 
-- 15 turns reached
-- 4 intelligence items collected
+- 10 turns reached
+- 5 intelligence items collected
 - 20 seconds inactivity
 
 Final payload:
@@ -136,39 +136,90 @@ Final payload:
 
 ## Setup
 
-### 1. Clone
+This API lives in the `Backend/` folder of the monorepo. Use the [Tester-HoneyPot](../Tester-HoneyPot/) app to run scenarios and receive callback payloads locally.
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+- OpenAI API key
+
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/The-ShambhaviPandey/Agentic-Honeypot.git
-cd Agentic-Honeypot
+git clone https://github.com/madhav-kr-singh/Agentic-HoneyPot.git
+cd Agentic-HoneyPot/Backend
 ```
 
-### 2. Install
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Configure
+### 3. Configure environment
 
 ```bash
-cp .env.example .env
+cp example.env .env
 ```
 
-`.env`:
+Edit `.env`:
 
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | HTTP port (default: `3000`) |
+| `API_KEY` | Yes | Secret for `x-api-key` header |
+| `OPENAI_API_KEY` | Yes | OpenAI key for Lookup/Handler agents |
+| `FINAL_CALLBACK_URL` | Yes* | Webhook URL for final session payload |
+
+\* Required for scoring/callback tests. For local dev with the tester, use the URL printed when you start the tester (e.g. `http://localhost:4000/callback`).
+
+Example `.env`:
+
+```env
 PORT=3000
-API_KEY=your_api_key
-OPENAI_API_KEY=your_openai_key
-FINAL_CALLBACK_URL=your_webhook_url
+API_KEY=secret_api_key
+OPENAI_API_KEY=sk-your-openai-key
+FINAL_CALLBACK_URL=http://localhost:4000/callback
 ```
 
-### 4. Run
+### 4. Start the tester (recommended, separate terminal)
 
 ```bash
+cd ../Tester-HoneyPot
+npm install
 npm start
 ```
+
+Use the printed `FINAL_CALLBACK_URL` in Backend `.env` if you have not set it yet.
+
+### 5. Run the API
+
+```bash
+cd ../Backend
+npm start
+```
+
+Server: **http://localhost:3000**  
+Health check: **GET /health**
+
+### 6. Verify with the tester UI
+
+1. Open **http://localhost:4000**
+2. Honeypot URL: `http://localhost:3000/honeypot`
+3. API Key: value of `API_KEY` from `.env`
+4. Run a scenario
+
+### CLI-only testing (without web UI)
+
+```bash
+cd Tester-HoneyPot
+node tester.js --url http://localhost:3000/honeypot --key your_api_key
+```
+
+Set Backend `FINAL_CALLBACK_URL` to the callback URL printed by the CLI (default: `http://<your-lan-ip>:3333/callback`).
+
+For architecture, agents, stop conditions, and deployment details, see [docs/architecture.md](docs/architecture.md).
 
 ---
 

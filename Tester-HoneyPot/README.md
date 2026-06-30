@@ -46,7 +46,7 @@ server.js (Node/Express) ←→ tester.js (Agent CLI) ←→ Honeypot API
 * **tester.js**
 
   * Simulates scam agents
-  * Multi-turn conversations (max 15 turns)
+  * Multi-turn conversations (max 10 turns)
   * Extracts PII (phone, UPI, bank, email)
   * Sends callback payloads
 
@@ -60,47 +60,90 @@ server.js (Node/Express) ←→ tester.js (Agent CLI) ←→ Honeypot API
 
 ## ⚙️ Quick Start
 
-### 1. Prerequisites
+### Prerequisites
 
 * Node.js 18+
+* Running honeypot API (see [Backend README](../Backend/README.md))
+
+This repo folder is `Tester-HoneyPot/`.
 
 ---
 
-### 2. Setup
+### Local setup
+
+**Step 1 — Install and start the tester**
 
 ```bash
-git clone <repo-url>
-cd honeypot-tester
+git clone https://github.com/madhav-kr-singh/Agentic-HoneyPot.git
+cd Agentic-HoneyPot/Tester-HoneyPot
 npm install
+npm start
 ```
+
+Default UI: **http://localhost:4000**
+
+On startup, note the callback URL (example):
+
+```
+FINAL_CALLBACK_URL=http://localhost:4000/callback
+```
+
+**Step 2 — Configure the honeypot Backend**
+
+In `Backend/.env`, set:
+
+```env
+FINAL_CALLBACK_URL=http://localhost:4000/callback
+API_KEY=your_secret_api_key
+OPENAI_API_KEY=sk-...
+```
+
+Start the Backend (`cd Backend && npm start` → port **3000**).
+
+**Step 3 — Run scenarios in the UI**
+
+| Field | Local value |
+|-------|-------------|
+| Honeypot URL | `http://localhost:3000/honeypot` |
+| API Key | Same as Backend `API_KEY` |
+
+Select a scenario → **Run Selected** or **Run All**.
 
 ---
 
-### 3. Run Locally
+### CLI mode (no web UI)
 
 ```bash
-npm start
-# or
-node server.js
+node tester.js --url http://localhost:3000/honeypot --key your_api_key
 ```
 
-Default: `http://localhost:4000`
+The CLI starts a callback listener on port **3333** by default. Set Backend:
+
+```env
+FINAL_CALLBACK_URL=http://<your-ip>:3333/callback
+```
 
 ---
 
-### 4. Deploy to Render (Production)
+### Deploy to Render (production)
 
-* Set environment variable:
+1. Deploy this service as a **Web Service**
+2. Start command: `node server.js` (or use the included `Procfile`)
+3. Optional env vars:
 
-  ```
-  RENDER_EXTERNAL_URL=https://your-app.onrender.com
-  ```
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Server port (Render sets this) |
+| `RENDER_EXTERNAL_URL` | Set automatically on Render |
+| `PUBLIC_URL` | Override public base URL if needed |
 
-* Use:
+4. Set on the **Backend** deployment:
 
-  ```
-  web: node server.js
-  ```
+```env
+FINAL_CALLBACK_URL=https://your-tester.onrender.com/callback
+```
+
+The tester injects `CALLBACK_URL` into child processes when runs are started from the UI; you still need `FINAL_CALLBACK_URL` on the honeypot so it knows where to POST the final payload.
 
 ---
 
@@ -133,17 +176,10 @@ Default: `http://localhost:4000`
 
 ## 🔁 Callback Flow
 
-* Tester injects:
-
-  ```
-  FINALCALLBACKURL=<server>/callback
-  ```
-
-* Honeypot must POST results to:
-
-  ```
-  /callback
-  ```
+1. The tester server exposes **POST `/callback`** to receive final payloads.
+2. When a run starts, `server.js` injects `CALLBACK_URL` into `tester.js` (e.g. `http://localhost:4000/callback`).
+3. Set the same URL on the honeypot as **`FINAL_CALLBACK_URL`** in `Backend/.env`.
+4. When a session ends, the honeypot POSTs JSON to that `/callback` endpoint.
 
 ---
 
@@ -207,7 +243,7 @@ Default: `http://localhost:4000`
 
 | Issue       | Fix                                 |
 | ----------- | ----------------------------------- |
-| No callback | Set `FINALCALLBACKURL` correctly    |
+| No callback | Set `FINAL_CALLBACK_URL` on the honeypot to the tester `/callback` URL |
 | SSE drops   | Keepalive runs every 20s            |
 | Low score   | Improve PII extraction              |
 | Debugging   | Check browser console + server logs |
