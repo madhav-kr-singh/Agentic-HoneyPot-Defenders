@@ -146,7 +146,7 @@ See also the [root README](../../README.md) for a single quick-start path.
                                        │   Stop Conditions        │
                                        │   Evaluator              │
                                        │                         │
-                                       │ • 10-turn limit         │
+                                       │ • 15-turn limit         │
                                        │ • 20s inactivity        │
                                        │ • 5+ intel pieces       │
                                        └────────────┬────────────┘
@@ -253,7 +253,7 @@ import { sendFinalCallback }  from "./callback.js";
 
 ### 3. Handler Agent (`Agents/handlerAgent.js`)
 
-**Responsibility:** Generate human-like, contextually appropriate replies that probe for intelligence across up to 10 turns.
+**Responsibility:** Generate human-like, contextually appropriate replies that probe for intelligence across up to 15 turns.
 
 **LLM call:** GPT-4o-mini, temperature 0.75, JSON mode, ~700–800 token dynamic prompt.
 
@@ -273,9 +273,9 @@ The prompt is rebuilt on every turn from five inputs:
 
 | Turn range | Strategy |
 |---|---|
-| 1–3 (Early) | Establish concern/interest, one question at a time |
-| 4–7 (Mid) | Probe company credentials, employee ID, official contact |
-| 8–10 (Late) | Direct request for any missing intel; express urgency |
+| 1–5 (Early) | Establish concern/interest, one question at a time |
+| 6–10 (Mid) | Probe company credentials, employee ID, official contact |
+| 11–15 (Late) | Direct request for any missing intel; express urgency |
 
 **Emotional profiles by scam type:**
 
@@ -293,7 +293,7 @@ The prompt is rebuilt on every turn from five inputs:
 **Conversation quality targets (aligned to scoring rubric):**
 
 The prompt instructs the agent to hit all five conversation quality axes:
-- Complete all 10 turns before triggering stop conditions where possible (Turn Count: 8 pts)
+- Complete all 15 turns before triggering stop conditions where possible (Turn Count: 8 pts)
 - Include at least one `?` per reply (Questions Asked: 4 pts)
 - At least once per 3 turns, probe for employee/company/registration details (Investigative Questions: 3 pts)
 - Explicitly name red flags: "this seems suspicious", "why do you need my OTP?" (Red Flag ID: 8 pts)
@@ -446,10 +446,10 @@ Used for: agentNotes generation; tactic classification
 
 Three exit conditions are evaluated by `shouldEnd(memory)` after **every turn**:
 
-### Condition 1 — Maximum turns (10)
+### Condition 1 — Maximum turns (15)
 ```javascript
 const turns = Math.floor(memory.metrics.totalMessages / 2);
-return turns >= 10;
+return turns >= 15;
 ```
 Rationale: Prevents unlimited engagement; ensures all conversations produce a payload.
 
@@ -472,7 +472,7 @@ Rationale: Diminishing returns after 5 unique data points; exit early to reduce 
 **Observed exit distribution:**
 | Condition | % of sessions |
 |---|---|
-| 10-turn limit | 62% |
+| 15-turn limit | 62% |
 | 5+ intel pieces | 23% |
 | 20s timeout | 15% |
 
@@ -508,7 +508,7 @@ When any stop condition fires:
     "identifyingIds":   ["REF-SBI-2025-7823"],
     "suspiciousKeywords": ["urgent", "blocked", "otp", "kyc"]
   },
-  "agentNotes": "Bank impersonation scam. Confidence: very high (0.97). Tactics: urgency, KYC compliance threat, OTP fishing. Objectives: account takeover, credential theft. Engagement: 10 turns, 312s. Intel collected: 2 phones, 1 bank account, 1 UPI, 1 phishing link, 1 email."
+  "agentNotes": "Bank impersonation scam. Confidence: very high (0.97). Tactics: urgency, KYC compliance threat, OTP fishing. Objectives: account takeover, credential theft. Engagement: 15 turns, 312s. Intel collected: 2 phones, 1 bank account, 1 UPI, 1 phishing link, 1 email."
 }
 ```
 
@@ -684,11 +684,11 @@ All responses well within the 30-second SLA.
 | Item | Cost per 1 M conversations |
 |---|---|
 | Lookup Agent (1 call/session × $0.0004) | $400 |
-| Handler Agent (10 calls/session × $0.0008) | $8,000 |
+| Handler Agent (15 calls/session × $0.0008) | $12,000 |
 | Server hosting (Render) | $25 |
-| **Total** | **$8,425** |
+| **Total** | **$12,425** |
 
-**Cost per conversation:** ~$0.0084 (under 1 cent)
+**Cost per conversation:** ~$0.0124
 
 ### Scalability limits
 

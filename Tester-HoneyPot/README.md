@@ -46,7 +46,7 @@ server.js (Node/Express) ←→ tester.js (Agent CLI) ←→ Honeypot API
 * **tester.js**
 
   * Simulates scam agents
-  * Multi-turn conversations (max 10 turns)
+  * Multi-turn conversations (max 15 turns)
   * Extracts PII (phone, UPI, bank, email)
   * Sends callback payloads
 

@@ -72,7 +72,7 @@ Output:
 - Adapts strategy by turn count
 - Explicitly identifies red flags
 
-Up to 10 turns per session.
+Up to 15 turns per session.
 
 ---
 
@@ -95,7 +95,7 @@ All data is deduplicated and stored in session memory.
 
 Session stops when:
 
-- 10 turns reached
+- 15 turns reached
 - 5 intelligence items collected
 - 20 seconds inactivity
 
